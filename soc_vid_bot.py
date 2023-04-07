@@ -161,7 +161,8 @@ async def handle_soc_videos(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 
                 sorted_links = sorted(result, key=get_efficiency_key)
                 if not sorted_links:
-                    await update.message.reply_text("Unable to parse url or video is not in a GAG, maybe API changed as well?")
+                    logger.warn("Unable to parse url or video is not in a GAG, maybe API changed as well? or its a picture")
+                    return
                 file_name = generate_filename_from_user(update=update)
                 file_path = generate_video_file_path(file_name=file_name)
                 logger.info(post_data)
@@ -179,7 +180,7 @@ async def handle_soc_videos(update: Update, context: ContextTypes.DEFAULT_TYPE) 
                 delete_temp(file_path=file_path)
         except Exception as e:
             logger.error(f"Error downloading gag: {e}")
-            await update.message.reply_text("Unable to parse url or video is private, maybe API changed as well?")
+            await update.message.reply_text(f"Error downloading gag: {e}")
     
     
 def extract_height_width(file_path, reel_id):
