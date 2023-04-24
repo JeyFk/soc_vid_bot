@@ -9,25 +9,30 @@ Simple bot that enables viewing of twitter videos in telegram channels
 
 import logging
 import re
+import sys
 from datetime import datetime
 import instaloader
 import shutil
 import json
 import requests
 import os
+from modules.reddit_module import download_and_get_reddit_post
 
 from telegram import __version__ as TG_VER
-TELEGRAM_BOT_TOKEN = 'X'
+TELEGRAM_BOT_TOKEN = sys.argv[1]
 
 efficiency_order = {
-    #svab1 is fake, as svav1 is not supported by python? anyway, too lazy to delete it.
-    "svab1": 1,  # AV1
+    #svav1 probably not supported 
     "svh256": 2,  # H.265/HEVC
     "h265": 2,    # H.265/HEVC
     "vp9": 3,     # VP9
     "sv": 4,      # H.264/AVC
     "vp8": 5      # VP8
 }
+
+#url_pattern = r'\b(?:https?://)?(?:www\.)?[\w-]+\.[\w-]+(?:\.\w+)?(?:[/?][\w-./?=#%&:]*)?\b'
+url_pattern = r'\b(?:https?://)?(?:www\.)?[\w-]+\.[\w-]+(?:\.\w+)?(?:[/?][\w./?=#%&:-]*)?\b'
+
 
 try:
     from telegram import __version_info__
@@ -41,6 +46,7 @@ if __version_info__ < (20, 0, 0, "alpha", 1):
         f"visit https://docs.python-telegram-bot.org/en/v{TG_VER}/examples.html"
     )
 from telegram import ForceReply, Update
+from telegram.constants import ParseMode
 from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, ChatMemberHandler, filters
 
 # Enable logging
@@ -66,6 +72,7 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text(update.message.text)
 
 async def handle_soc_videos(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    
     """EDIT TWITTER TO DISPLAY VIDEO"""
     message = update.message.text
     #Handle twitter
@@ -129,7 +136,6 @@ async def handle_soc_videos(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.63 Safari/537.36'
         }
-        url 
         try:
             response = requests.get(url, headers=headers)
 
@@ -181,8 +187,42 @@ async def handle_soc_videos(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         except Exception as e:
             logger.error(f"Error downloading gag: {e}")
             await update.message.reply_text(f"Error downloading gag: {e}")
-    
-    
+
+    if 'reddit.com/' in message:
+
+        try:
+            file_name, height, width = download_and_get_reddit_post(url=message, logger=logger)
+            file_path = generate_video_file_path(file_name=file_name)
+
+           
+            url = get_urls_from_message(message=message)
+        
+            # url = " url refference not supported yet"
+            caption = "Sent by @%s,\nSource is %s" % (update.message.from_user.username ,url )
+            await context.bot.send_video(context._chat_id, 
+                                         video=file_path, 
+                                         height=height, width=width,
+                                         caption=caption, parse_mode = ParseMode.HTML)
+            await update.message.delete()
+
+            delete_temp(file_path=file_path)
+
+        except Exception as e:
+            logger.error(f"Error downloading reddit: {e}")
+            await update.message.reply_text(f"Error downloading reddit video: {e}")
+
+
+
+def extract_urls(text):
+    return re.findall(r'\b(?:https?://)?(?:www\.)?[\w-]+\.[\w-]+(?:\.\w+)?(?:[/?][\w./?=#%&:-]*)?\b', text)
+
+def get_urls_from_message(message):
+    combine_lambda = lambda urls: ", ".join([f"<a href='{s}'>here</a>\n" for s in urls])
+
+    urls = extract_urls(message)
+    return combine_lambda(urls=urls)
+
+
 def extract_height_width(file_path, reel_id):
     file_path = file_path[:-4] + ".json" 
 
@@ -235,12 +275,13 @@ def download_file(url, name):
         print(f"Failed to download the video. Status code: {response.status_code}")
 
 def generate_filename_from_user(update: Update):
-    file_name = str(datetime.now().timestamp()) + update.message.from_user.name;
-    return file_name;
+    file_name = str(datetime.now().timestamp()) + update.message.from_user.name
+    return file_name
 
 def generate_video_file_path(file_name:str):
     path = file_name + ".mp4"
-    return path;
+    logger.info("path is " + path)
+    return path
 
 
 def main() -> None:
