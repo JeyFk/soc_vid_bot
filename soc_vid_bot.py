@@ -20,9 +20,18 @@ from modules.reddit_module import download_and_get_reddit_post
 from modules.insta_module import download_and_get_reel
 from modules.insta_module_v5 import download_reel_with_instagram_scraper
 from modules.insta_module_v6 import download_reel
+from google.cloud import secretmanager
+from google.cloud import storage
 
 from telegram import __version__ as TG_VER
-TELEGRAM_BOT_TOKEN = sys.argv[1]
+
+def get_secret(secret_name):
+    client = secretmanager.SecretManagerServiceClient()
+    name = f"projects/YOUR_PROJECT_ID/secrets/{secret_name}/versions/latest"
+    response = client.access_secret_version(request={"name": name})
+    return response.payload.data.decode("UTF-8")
+
+TELEGRAM_BOT_TOKEN = get_secret("telegram-bot-token")
 
 efficiency_order = {
     #svav1 probably not supported 
@@ -75,7 +84,6 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text(update.message.text)
 
 async def handle_soc_videos(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    
     """EDIT TWITTER TO DISPLAY VIDEO"""
     message = update.message.text
     #Handle twitter
@@ -289,6 +297,17 @@ def generate_video_file_path(file_name:str):
     logger.info("path is " + path)
     return path
 
+async def upload_to_gcs(bucket_name, source_file_name, destination_blob_name):
+    storage_client = storage.Client()
+    bucket = storage_client.bucket(bucket_name)
+    blob = bucket.blob(destination_blob_name)
+    blob.upload_from_filename(source_file_name)
+
+async def download_from_gcs(bucket_name, source_blob_name, destination_file_name):
+    storage_client = storage.Client()
+    bucket = storage_client.bucket(bucket_name)
+    blob = bucket.blob(source_blob_name)
+    blob.download_to_filename(destination_file_name)
 
 def main() -> None:
     """Start the bot."""
