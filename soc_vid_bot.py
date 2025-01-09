@@ -17,6 +17,9 @@ import json
 import requests
 import os
 from modules.reddit_module import download_and_get_reddit_post
+from modules.insta_module import download_and_get_reel
+from modules.insta_module_v5 import download_reel_with_instagram_scraper
+from modules.insta_module_v6 import download_reel
 
 from telegram import __version__ as TG_VER
 TELEGRAM_BOT_TOKEN = sys.argv[1]
@@ -76,52 +79,55 @@ async def handle_soc_videos(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     """EDIT TWITTER TO DISPLAY VIDEO"""
     message = update.message.text
     #Handle twitter
-    if 'twitter.com/' in message and not "vstwitter.com" in message:
+    if 'https://x.com' in message and not "vxtwitter.com" in message:
         logger.info("editing %s" , message)
         try:
-            modified_message = re.sub(r'(https?://www\.)?twitter\.com/', 'vstwitter.com/', message)
+            modified_message = re.sub(r'(https?://www\.)?(twitter\.com|x\.com)/', 'vxtwitter.com/', message)
            # await update.message.reply_text(modified_message)
             await context.bot.send_message(context._chat_id, modified_message + "\n\nSent by @" + str(update.message.from_user.username)) 
-
+    
             await update.message.delete()
         except Exception as e:
             await update.message.reply_text(f'Error: {str(e)}')
     
     #Handle instagram reels
-    if 'instagram.com/reel' in message or "facebook.com/reel" in message:
-        if 'instagram' in message:
-            logger.info("it's instagram link " + message)
-            shortcode = re.search(r"instagram.com/(reel|reels)/([\w-]+)", message)
-        # elif 'facebook' in message:
-        #     logger.info("it's facebook link " + message)
-        #     shortcode = re.search(r"facebook\.com/(reel|reels)/(\w+)", message)
-
-        if not shortcode:
-            logger.info("Invalid URL? I dont know")
-            return
-
-        shortcode = shortcode.group(2)
-        file_name = generate_filename_from_user(update=update);
-        #Build instaloader
-        L = instaloader.Instaloader(filename_pattern="{target}",save_metadata=True,
-                                    download_pictures=False, download_geotags=False, download_comments=False,
-                                    download_video_thumbnails=False, compress_json=False)
-        
+    if 'instagram.com/reel' in message and not "ddinstagram.com" in message:
+        logger.info("editing %s" , message)
         try:
-            logger.info("downloading from shortcode: {%s}", shortcode)
-            reel = instaloader.Post.from_shortcode(L.context, shortcode)
-            L.download_post(reel, target=file_name)
-            path = generate_video_file_path(file_name=file_name + "/" + file_name)
-            #extract heigh width
-            height, width = extract_height_width(file_path=path, reel_id=shortcode)
-            logger.info("height:{%s}, width:{%s}", height, width)
-            logger.info("path for instagram video is %s" , path)
-            await context.bot.send_video(context._chat_id, path , height=height, width=width, caption="Sent by @" + str(update.message.from_user.username)) 
+            modified_message = re.sub(r'(https?://www\.)?instagram\.com/', 'https://ddinstagram.com/', message)
+           # await update.message.reply_text(modified_message)
+            await context.bot.send_message(context._chat_id, modified_message + "\n\nSent by @" + str(update.message.from_user.username)) 
+    
             await update.message.delete()
-            delete_temp(file_path=file_name)
         except Exception as e:
-            logger.error(f"Error downloading reel: {e}")
-            await update.message.reply_text("Unable to parse url or video is private, maybe API changed as well?")
+            await update.message.reply_text(f'Error: {str(e)}')
+
+        # if not shortcode:
+        #     logger.info("Invalid URL? I dont know")
+        #     return
+
+        # shortcode = shortcode.group(2)
+        # file_name = generate_filename_from_user(update=update);
+        # #Build instaloader
+        # L = instaloader.Instaloader(filename_pattern="{target}",save_metadata=True,
+        #                             download_pictures=False, download_geotags=False, download_comments=False,
+        #                             download_video_thumbnails=False, compress_json=False)
+        
+        # try:
+        #     logger.info("downloading from shortcode: {%s}", shortcode)
+        #     reel = instaloader.Post.from_shortcode(L.context, shortcode)
+        #     L.download_post(reel, target=file_name)
+        #     path = generate_video_file_path(file_name=file_name + "/" + file_name)
+        #     #extract heigh width
+        #     height, width = extract_height_width(file_path=path, reel_id=shortcode)
+        #     logger.info("height:{%s}, width:{%s}", height, width)
+        #     logger.info("path for instagram video is %s" , path)
+        #     await context.bot.send_video(context._chat_id, path , height=height, width=width, caption="Sent by @" + str(update.message.from_user.username)) 
+        #     await update.message.delete()
+        #     delete_temp(file_path=file_name)
+        # except Exception as e:
+        #     logger.error(f"Error downloading reel: {e}")
+        #     await update.message.reply_text("Unable to parse url or video is private, maybe API changed as well?")
             
     if '9gag.com/' in message:
         shortcode = re.search(r"9gag.com/gag/([\w-]+)(\?)*", message)
@@ -188,28 +194,28 @@ async def handle_soc_videos(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             logger.error(f"Error downloading gag: {e}")
             await update.message.reply_text(f"Error downloading gag: {e}")
 
-    if 'reddit.com/' in message:
+    # if 'reddit.com/' in message:
 
-        try:
-            file_name, height, width = download_and_get_reddit_post(url=message, logger=logger)
-            file_path = generate_video_file_path(file_name=file_name)
+    #     try:
+    #         file_name, height, width = download_and_get_reddit_post(url=message, logger=logger)
+    #         file_path = generate_video_file_path(file_name=file_name)
 
            
-            url = get_urls_from_message(message=message)
+    #         url = get_urls_from_message(message=message)
         
-            # url = " url refference not supported yet"
-            caption = "Sent by @%s,\nSource is %s" % (update.message.from_user.username ,url )
-            await context.bot.send_video(context._chat_id, 
-                                         video=file_path, 
-                                         height=height, width=width,
-                                         caption=caption, parse_mode = ParseMode.HTML)
-            await update.message.delete()
+    #         # url = " url refference not supported yet"
+    #         caption = "Sent by @%s,\nSource is %s" % (update.message.from_user.username ,url )
+    #         await context.bot.send_video(context._chat_id, 
+    #                                      video=file_path, 
+    #                                      height=height, width=width,
+    #                                      caption=caption, parse_mode = ParseMode.HTML)
+    #         await update.message.delete()
 
-            delete_temp(file_path=file_path)
+    #         delete_temp(file_path=file_path)
 
-        except Exception as e:
-            logger.error(f"Error downloading reddit: {e}")
-            await update.message.reply_text(f"Error downloading reddit video: {e}")
+    #     except Exception as e:
+    #         logger.error(f"Error downloading reddit: {e}")
+    #         await update.message.reply_text(f"Error downloading reddit video: {e}")
 
 
 

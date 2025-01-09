@@ -1,0 +1,4 @@
+functions-framework==3.*
+python-telegram-bot==20.*
+instaloader
+requests
