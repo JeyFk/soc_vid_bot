@@ -1,0 +1,10 @@
+/temp
+/session
+/server.log 
+/modules/session
+.vscode
+/temp_*
+pycache
+/modules/__pycache__
+gecodriver.log
+

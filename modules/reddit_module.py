@@ -3,7 +3,6 @@ import logging
 import json
 from bs4 import BeautifulSoup
 import requests
-import sys
 import xml.etree.ElementTree as ET
 
 logger = logging.getLogger(__name__)
@@ -13,16 +12,20 @@ def download_and_get_reddit_post(url, logger) -> (str, str, str):
     logger.info("Opening %s", url)
     headers_for_reddit = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.63 Safari/537.36',
+        "Cookie": '; token_v2=..; csv=2; edgebucket=XPc8KW9NCptMI78ItA; session=; session_tracker=bjmrgcpejeeemfiflq.0.1682612643323.Z0FBQUFBQmtTcUdqT2FGb1doT1Q3VnlTUXdXNmFEeTRWeUZoSFRxRGdWQV9NLWd5VGpFcGNkUGhGeXNDaFcyTXI2ZTBDSFBuelJ6aC0zbzhRVTVQU0FfZXliUnJjMk5zMGUtTUdBR2RMRDhJa1E4RUdBMUVJbWpXeVlrb2dNaF9zbmRVM1FKOFdKaVY; datadome=7iMYzMVdcbrnGMjeCcvQlLXeeSGAw0_~~ZGUJKPnbzPIxu5EI9N7D'
     }
     response = requests.get(url, headers=headers_for_reddit)
-
     post_id = url[url.find('comments/') + 9:]
     post_id = f"t3_{post_id[:post_id.find('/')]}"
 
     if (response.status_code == 200):  # checking if the server responded with OK
         soup = BeautifulSoup(response.text, 'lxml')
-
+        print(soup.text)
+        #placeholder to fix cookie
         required_js = soup.find('script', id='data')
+
+        if(required_js == None): return
+
 
         json_data = json.loads(
             required_js.text.replace('window.___r = ', '')[:-1])
@@ -122,3 +125,7 @@ def scrape_video_from_mpd(content):
     logger.info("audio is %s", audio_url)
 
     return video_url, audio_url
+
+
+if __name__ == "__main__":
+    download_and_get_reddit_post(url="https://www.reddit.com/r/JustGuysBeingDudes/comments/1304hsk/night_with_the_boys/?utm_source=share&utm_medium=android_app&utm_name=androidcss&utm_term=14&utm_content=share_button", logger=logger)
